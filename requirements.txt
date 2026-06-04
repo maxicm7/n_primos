@@ -1,0 +1,9 @@
+# Interfaz de usuario y framework principal
+streamlit>=1.35.0
+
+# Manipulación y análisis de datos
+pandas>=2.1.0
+numpy>=1.26.0
+
+# Visualización de datos interactiva
+plotly>=5.18.0
