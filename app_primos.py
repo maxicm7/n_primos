@@ -83,6 +83,7 @@ st.markdown("""
     /* Mejora visual para los tabs */
     button[data-baseweb="tab"] {font-size: 1rem; padding: 10px 20px;}
     button[data-baseweb="tab"][aria-selected="true"] {background-color: #00d4ff !important; color: #000 !important;}
+    .formula-box {background-color: #2a2a2a; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #ffa500; margin: 1rem 0;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,18 +96,51 @@ st.markdown('<div class="sub-header">Análisis de Homeostasis Estocástica y Vá
 
 with st.sidebar:
     st.header("⚙️ Parámetros del Universo")
+    
+    st.subheader("📊 Análisis Numérico")
     N_input = st.slider(
         "Límite Superior (N)", 
         min_value=10, max_value=100000, value=1000, step=10,
-        help="Valores > 5,000 usarán muestreo inteligente en la tabla para optimizar el rendimiento."
+        help="Límite de la recta numérica a analizar. Valores > 5,000 usarán muestreo inteligente."
     )
     
     st.divider()
-    st.markdown("### 📐 Constantes del Modelo")
-    st.info("**Constante Estructural (k):** 40.0\nRepresenta la tolerancia base del sistema antes de la saturación.")
+    
+    st.subheader("🎯 Estructura del Sistema")
+    st.markdown("Define la composición del sistema para calcular la Constante Estructural K")
+    
+    elementos_sistema = st.number_input(
+        "Total de Elementos del Sistema",
+        min_value=2, max_value=1000, value=46, step=1,
+        help="Cantidad total de elementos en el pool del sistema (ej: 46 bolas en lotería)"
+    )
+    
+    manifestaciones = st.number_input(
+        "Elementos con Atraso 0 (Manifestaciones)",
+        min_value=1, max_value=elementos_sistema-1, value=6, step=1,
+        help="Elementos que se manifiestan y resetean el sistema (ej: 6 números extraídos)"
+    )
+    
+    # Cálculo dinámico de K
+    K_dinamica = elementos_sistema - manifestaciones
     
     st.divider()
-    st.caption("v2.1 | Motor Vectorizado NumPy | Qwen3.7 Architecture")
+    
+    st.markdown("### 📐 Constante Estructural K")
+    st.markdown('<div class="formula-box">', unsafe_allow_html=True)
+    st.latex(r"K = E_{total} - M")
+    st.markdown(f"**K = {elementos_sistema} - {manifestaciones} = {K_dinamica}**")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.info(f"""
+    **Interpretación:**
+    - **E_total:** {elementos_sistema} elementos en el pool
+    - **M (Manifestaciones):** {manifestaciones} elementos con atraso 0
+    - **K:** {K_dinamica} representa la tensión estructural base del sistema
+    """)
+    
+    st.divider()
+    st.caption("v2.2 | K Dinámica | Motor Vectorizado NumPy")
 
 # ==============================================================================
 # --- 4. PROCESAMIENTO Y MÉTRICAS ---
@@ -114,7 +148,8 @@ with st.sidebar:
 
 df_resultado, total_atrasos, num_primos, max_brecha, avg_brecha, densidad, latencias_array = analizar_homeostasis_vectorizada(N_input)
 
-constante_C = total_atrasos + 40
+# Constante C ahora usa K dinámica
+constante_C = total_atrasos + K_dinamica
 entropia_sistema = float(np.std(latencias_array))
 
 st.divider()
@@ -126,15 +161,15 @@ with col1:
 with col2:
     st.metric("🔴 Σ Atrasos del Sistema", f"{total_atrasos:,}", delta=f"Max: {max_brecha}")
 with col3:
-    st.metric("⚖️ Constante de Saturación (C)", f"{constante_C:,}")
+    st.metric("⚖️ Constante K (Dinámica)", f"{K_dinamica}", help=f"{elementos_sistema} - {manifestaciones}")
 with col4:
-    st.metric("🌊 Entropía (σ)", f"{entropia_sistema:.2f}", help="Desviación estándar de las brechas entre primos")
+    st.metric("🌊 Constante C (Saturación)", f"{constante_C:,}", help=f"ΣAtrasos + K")
 
 # ==============================================================================
 # --- 5. VISUALIZACIONES AVANZADAS ---
 # ==============================================================================
 
-tab1, tab2, tab3 = st.tabs(["📈 Mapa de Tensión", "📊 Distribución de Latencia", " Registro de Datos"])
+tab1, tab2, tab3 = st.tabs(["📈 Mapa de Tensión", "📊 Distribución de Latencia", "📄 Registro de Datos"])
 
 # --- TAB 1: MAPA DE TENSIÓN (CON MEJORAS VISUALES) ---
 with tab1:
@@ -177,7 +212,7 @@ with tab1:
         fig_area.add_annotation(
             x=0.5, y=1.08,
             xref="paper", yref="paper",
-            text=f"️ Mostrando 1 de cada {step} primos para claridad visual (Total: {len(df_primos):,} primos)",
+            text=f"⚠️ Mostrando 1 de cada {step} primos para claridad visual (Total: {len(df_primos):,} primos)",
             showarrow=False,
             font=dict(size=11, color="#888")
         )
@@ -257,16 +292,31 @@ with tab3:
 # --- 6. FUNDAMENTOS ACADÉMICOS ---
 # ==============================================================================
 
-with st.expander(" Ver Fundamentos Matemáticos y Teoría del Modelo"):
-    st.latex(r"C = \sum_{i=1}^{N} A_i + k")
+with st.expander("📚 Ver Fundamentos Matemáticos y Teoría del Modelo"):
+    st.latex(r"C = \sum_{i=1}^{N} A_i + K")
+    
+    st.markdown("### 🎯 Fórmula de la Constante K (Dinámica):")
+    st.latex(r"K = E_{total} - M")
+    st.markdown(f"""
+    Donde:
+    - **E_total = {elementos_sistema}**: Total de elementos en el pool del sistema
+    - **M = {manifestaciones}**: Elementos que se manifiestan con atraso 0
+    - **K = {K_dinamica}**: Tensión estructural base del sistema
+    """)
+    
     st.markdown("""
     ### Desglose de la Ecuación de Homeostasis:
     - **$A_i$ (Atraso Individual):** Representa la distancia métrica desde el último número primo. 
       En teoría de números, esto se correlaciona con la *brecha entre primos* ($p_{n+1} - p_n$).
-    - **$k$ (Constante Estructural):** Un valor base de calibración (40) que representa la inercia 
-      mínima del sistema.
+    - **$K$ (Constante Estructural Dinámica):** Ya no es un valor fijo, sino que se calcula según 
+      la estructura del sistema que se analiza. Representa la tensión base inherente al sistema.
     - **Manifestación (n):** Cuando $A_i = 0$, el sistema alcanza un estado de simetría (número primo), 
       liberando toda la tensión acumulada (Reset).
     - **Riesgo de Fallo (Weibull):** Modelado como $R \\propto A_i^2$. La probabilidad de colapso 
       informativo no es lineal, sino cuadrática respecto al tiempo sin una "válvula de escape" prima.
+    
+    ### Ejemplo Práctico (Lotería):
+    - **Pool de elementos:** 46 bolas
+    - **Bolas extraídas (manifestaciones):** 6
+    - **K = 46 - 6 = 40** (tensión estructural del sistema)
     """)
