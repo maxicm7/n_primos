@@ -10,3 +10,5 @@ plotly>=5.18.0
 
 # Requerido por Pandas para los degradados de color (background_gradient)
 matplotlib>=3.8.0
+
+scipy
